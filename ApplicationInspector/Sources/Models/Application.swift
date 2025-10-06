@@ -102,6 +102,6 @@ public struct Application
             return nil
         }
 
-        return appBundle.resourceURL?.appending(component: iconFileName)
+        return appBundle.resourceURL?.appendingPathComponent(iconFileName, conformingTo: .icns)
     }
 }
