@@ -6,12 +6,15 @@
 //
 
 import Foundation
+import SwiftUI
 
 public struct Application
 {
     public let name: String
     
     public let iconPath: URL?
+    
+    public let iconImage: Image?
 
     public enum ApplicationInitializationError: LocalizedError
     {
@@ -82,6 +85,17 @@ public struct Application
             self.name = appName
 
             self.iconPath = Application.getAppIconPath(fromInfoDictionary: appBundleInfoDictionary, appBundle: appBundle)
+            
+            if let iconPath = self.iconPath
+            {
+                self.iconImage = .init(
+                    nsImage: .init(byReferencing: iconPath)
+                )
+            }
+            else
+            {
+                self.iconImage = nil
+            }
         }
         catch let applicationDirectoryAccessError
         {
