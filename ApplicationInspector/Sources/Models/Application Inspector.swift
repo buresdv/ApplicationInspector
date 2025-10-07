@@ -10,5 +10,10 @@ import Foundation
 /// Class implementing logic for inspecting applications for information
 public class ApplicationInspector
 {
+    var installedApps: [Application]
     
+    public init()
+    {
+        self.installedApps = .init()
+    }
 }
