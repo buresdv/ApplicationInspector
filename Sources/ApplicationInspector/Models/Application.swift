@@ -21,6 +21,15 @@ public struct Application: Identifiable, Hashable, Sendable
     
     public let iconImage: Image?
     
+    public struct AdditionalDetails: Hashable, Sendable
+    {
+        public let bundleID: String
+        
+        public let isSystemApp: Bool
+    }
+    
+    public let additionalDetails: AdditionalDetails
+    
     public static func == (lhs: Application, rhs: Application) -> Bool
     {
         lhs.id == rhs.id
@@ -95,7 +104,10 @@ public struct Application: Identifiable, Hashable, Sendable
             throw ApplicationInitializationError.couldNotGetInfoDictionary
         }
         
-        guard let appName: String = Application.getAppName(fromInfoDictionary: appBundleInfoDictionary) else
+        guard
+            let appName: String = Application.getAppName(fromInfoDictionary: appBundleInfoDictionary),
+            let appBundleIdentifier: String = Application.getAppBundleID(fromInfoDictionary: appBundleInfoDictionary)
+        else
         {
             throw ApplicationInitializationError.couldNotGetMandatoryAppInformation(.name)
         }
@@ -116,8 +128,20 @@ public struct Application: Identifiable, Hashable, Sendable
         {
             self.iconImage = nil
         }
+        
+        let details: Application.AdditionalDetails = .init(
+            bundleID: appBundleIdentifier,
+            isSystemApp: appBundleIdentifier.hasPrefix("com.apple")
+        )
+        
+        self.additionalDetails = details
     }
 
+    private static func getAppBundleID(fromInfoDictionary infoDictionary: [String: Any]) -> String?
+    {
+        return infoDictionary["CFBundleIdentifier"] as? String
+    }
+    
     private static func getAppName(fromInfoDictionary infoDictionary: [String: Any]) -> String?
     {
         return infoDictionary["CFBundleName"] as? String

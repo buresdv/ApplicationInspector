@@ -3,9 +3,14 @@ import Testing
 
 @Test func testLoadingOfAllApplications() async throws
 {    
-    let testApplicationInspector: ApplicationInspector = try await .init()
+    let testApplicationInspector_allApps: ApplicationInspector = try await .init(excludeSystemApps: false)
     
-    #expect(testApplicationInspector.installedApplications.count > 0)
+    let testApplicationInspector_onlyUserApps: ApplicationInspector = try await .init(excludeSystemApps: true)
+    
+    #expect(testApplicationInspector_allApps.installedApplications.count > 0)
+    #expect(testApplicationInspector_onlyUserApps.installedApplications.count > 0)
+    
+    #expect(testApplicationInspector_allApps.installedApplications.count > testApplicationInspector_onlyUserApps.installedApplications.count)
 }
 
 @Test func testLoadingOfAnApplication() async throws
@@ -14,4 +19,6 @@ import Testing
     
     #expect(testedApplication.name == "Music")
     #expect(testedApplication.url == .init(filePath: "/System/Applications/Music.app"))
+    #expect(testedApplication.additionalDetails.bundleID == "com.apple.Music")
+    #expect(testedApplication.additionalDetails.isSystemApp == true)
 }

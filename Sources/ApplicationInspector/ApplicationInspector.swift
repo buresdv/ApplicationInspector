@@ -9,9 +9,13 @@ public class ApplicationInspector
 {
     public var installedApplications: [ApplicationsListingResult]
 
-    public init() async throws(ApplicationsDirectoryReadingError)
+    public init(
+        excludeSystemApps: Bool
+    ) async throws(ApplicationsDirectoryReadingError)
     {
-        self.installedApplications = try await ApplicationInspector.getAllInstalledApplications()
+        self.installedApplications = try await ApplicationInspector.getAllInstalledApplications(
+            excludeSystemApps: excludeSystemApps
+        )
     }
 
     public enum ApplicationsDirectoryReadingError: LocalizedError

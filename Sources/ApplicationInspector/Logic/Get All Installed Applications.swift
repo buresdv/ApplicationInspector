@@ -9,14 +9,16 @@ import Foundation
 
 public extension ApplicationInspector
 {
-    static func getAllInstalledApplications() async throws(ApplicationsDirectoryReadingError) -> [ApplicationsListingResult]
+    static func getAllInstalledApplications(
+        excludeSystemApps: Bool
+    ) async throws(ApplicationsDirectoryReadingError) -> [ApplicationsListingResult]
     {
         do
         {
             let contentsOfApplicationsFolder: [URL] = try FileManager.default.contentsOfDirectory(at: .applicationDirectory, includingPropertiesForKeys: [.isApplicationKey])
 
             let applicationsLoaderResult = await withTaskGroup(
-                of: ApplicationsListingResult.self
+                of: (ApplicationsListingResult.self)
             ) { applicationsLoader in
                 for applicationURL in contentsOfApplicationsFolder
                 {
@@ -39,7 +41,19 @@ public extension ApplicationInspector
                 
                 for await result in applicationsLoader
                 {
-                    applicationsListingResults.append(result)
+                    
+                    if !excludeSystemApps
+                    {
+                        applicationsListingResults.append(result)
+                    }
+                    else
+                    {
+                        if ((try? !result.get().additionalDetails.isSystemApp) != nil)
+                        {
+                            applicationsListingResults.append(result)
+                        }
+                    }
+
                 }
                 
                 return applicationsListingResults
