@@ -1,4 +1,4 @@
-# .app Bundles, Swift Way
+# .app Bundles the Swift Way
 
 Have you ever wanted to read an `.app`'s data, but it was too annoying?
 
