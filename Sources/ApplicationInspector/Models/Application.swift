@@ -46,9 +46,8 @@ public struct Application: Identifiable, Hashable, Sendable
                 }
             }
         }
-        
+        case providedURLDoesNotExist(checkedPath: String)
         case applicationExecutableNotReadable(checkedPath: String)
-        case couldNotAccessApplicationExecutable(error: Error)
         case couldNotReadBundle(applicationPath: String)
         case couldNotGetInfoDictionary
         case couldNotGetMandatoryAppInformation(_ mandatoryInformation: MandatoryAppInformation)
@@ -56,10 +55,10 @@ public struct Application: Identifiable, Hashable, Sendable
         public var errorDescription: String?
         {
             switch self {
+            case .providedURLDoesNotExist(let checkedPath):
+                return "The provided URL does not exist: \(checkedPath)"
             case .applicationExecutableNotReadable(let checkedPath):
                 return "Couldn't read application executable at \(checkedPath)"
-            case .couldNotAccessApplicationExecutable(let error):
-                return "Couldn't read application executable: \(error)"
             case .couldNotReadBundle(let applicationPath):
                 return "Couldn't read application bundle at \(applicationPath)"
             case .couldNotGetInfoDictionary:
@@ -72,52 +71,50 @@ public struct Application: Identifiable, Hashable, Sendable
 
     public init(from appURL: URL) throws(ApplicationInitializationError)
     {
-        do
+        guard FileManager.default.fileExists(atPath: appURL.path) else
         {
-            guard FileManager.default.isReadableFile(atPath: appURL.path) == true else
-            {
-                throw ApplicationInitializationError.applicationExecutableNotReadable(checkedPath: appURL.path)
-            }
-
-            guard let appBundle: Bundle = .init(url: appURL)
-            else
-            {
-                throw ApplicationInitializationError.couldNotReadBundle(applicationPath: appURL.absoluteString)
-            }
-
-            LibraryConstants.shared.logger.debug("Will try to initialize and App object form bundle \(appBundle)")
-            
-            guard let appBundleInfoDictionary: [String: Any] = appBundle.infoDictionary
-            else
-            {
-                throw ApplicationInitializationError.couldNotGetInfoDictionary
-            }
-            
-            guard let appName: String = Application.getAppName(fromInfoDictionary: appBundleInfoDictionary) else
-            {
-                throw ApplicationInitializationError.couldNotGetMandatoryAppInformation(.name)
-            }
-            
-            self.name = appName
-            
-            self.url = appURL
-
-            self.iconPath = Application.getAppIconPath(fromInfoDictionary: appBundleInfoDictionary, appBundle: appBundle)
-            
-            if let iconPath = self.iconPath
-            {
-                self.iconImage = .init(
-                    nsImage: .init(byReferencing: iconPath)
-                )
-            }
-            else
-            {
-                self.iconImage = nil
-            }
+            throw ApplicationInitializationError.providedURLDoesNotExist(checkedPath: appURL.path)
         }
-        catch let applicationDirectoryAccessError
+        
+        guard FileManager.default.isReadableFile(atPath: appURL.path) == true else
         {
-            throw .couldNotAccessApplicationExecutable(error: applicationDirectoryAccessError)
+            throw ApplicationInitializationError.applicationExecutableNotReadable(checkedPath: appURL.path)
+        }
+
+        guard let appBundle: Bundle = .init(url: appURL)
+        else
+        {
+            throw ApplicationInitializationError.couldNotReadBundle(applicationPath: appURL.absoluteString)
+        }
+
+        LibraryConstants.shared.logger.debug("Will try to initialize and App object form bundle \(appBundle)")
+        
+        guard let appBundleInfoDictionary: [String: Any] = appBundle.infoDictionary
+        else
+        {
+            throw ApplicationInitializationError.couldNotGetInfoDictionary
+        }
+        
+        guard let appName: String = Application.getAppName(fromInfoDictionary: appBundleInfoDictionary) else
+        {
+            throw ApplicationInitializationError.couldNotGetMandatoryAppInformation(.name)
+        }
+        
+        self.name = appName
+        
+        self.url = appURL
+
+        self.iconPath = Application.getAppIconPath(fromInfoDictionary: appBundleInfoDictionary, appBundle: appBundle)
+        
+        if let iconPath = self.iconPath
+        {
+            self.iconImage = .init(
+                nsImage: .init(byReferencing: iconPath)
+            )
+        }
+        else
+        {
+            self.iconImage = nil
         }
     }
 
