@@ -46,10 +46,10 @@ Once an `Application` object is created, you gain access to the following metada
 
 ### Reading the entire Applications folder
 
-To read the entire Applications folder, initialize the `ApplicationInspector` class:
+To read the entire Applications folder, initialize the `ApplicationInspector` class. You can specify whether to exclude system apps, like *Music*, *Mail*, and others, by specifying `excludeSystemApps` in the initializer:
 
 ```swift
-let testApplicationInspector: ApplicationInspector = try await .init()
+let testApplicationInspector: ApplicationInspector = try await .init(excludeSystemApps: Bool)
 ```
 
 The `ApplicationInspector` class defines a `installedApplications` property, which contains an array of the loaded Applications, represented by a `ApplicationsListingResult` typealias. This typealias contains an `Application` if the reading of that Application was successful, or an `Application.ApplicationInitializationError` if the reading of that application failed.
