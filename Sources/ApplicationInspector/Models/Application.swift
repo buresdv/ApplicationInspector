@@ -9,153 +9,183 @@ import Foundation
 import SwiftUI
 
 #if os(macOS)
-public struct Application: Identifiable, Hashable, Sendable
-{
-    public let id: UUID = .init()
-    
-    public let name: String
-    
-    public let url: URL
-    
-    public let iconPath: URL?
-    
-    public let iconImage: Image?
-    
-    public struct AdditionalDetails: Hashable, Sendable
+    public struct Application: Identifiable, Hashable, Sendable
     {
-        public let bundleID: String
-        
-        public let isSystemApp: Bool
-    }
-    
-    public let additionalDetails: AdditionalDetails
-    
-    public static func == (lhs: Application, rhs: Application) -> Bool
-    {
-        lhs.id == rhs.id
-    }
-    
-    public func hash(into hasher: inout Hasher)
-    {
-        hasher.combine(name)
-        hasher.combine(id)
-    }
+        public let id: UUID = .init()
 
-    public enum ApplicationInitializationError: LocalizedError
-    {
-        public enum MandatoryAppInformation: String, Sendable
+        public let name: String
+
+        public let url: URL
+
+        public let iconPath: URL?
+
+        public let iconImage: Image?
+
+        public struct AdditionalDetails: Hashable, Sendable
         {
-            case name
-            
-            public var description: String
+            public let bundleID: String
+
+            public let isSystemApp: Bool
+        }
+
+        public let additionalDetails: AdditionalDetails
+
+        public static func == (lhs: Application, rhs: Application) -> Bool
+        {
+            lhs.id == rhs.id
+        }
+
+        public func hash(into hasher: inout Hasher)
+        {
+            hasher.combine(name)
+            hasher.combine(id)
+        }
+
+        public enum ApplicationInitializationError: LocalizedError
+        {
+            public enum MandatoryAppInformation: String, Sendable
             {
-                switch self {
-                case .name:
-                    return "Name"
+                case name
+
+                public var description: String
+                {
+                    switch self
+                    {
+                    case .name:
+                        return "Name"
+                    }
+                }
+            }
+
+            case providedURLDoesNotExist(checkedPath: String)
+            case applicationExecutableNotReadable(checkedPath: String)
+            case couldNotReadBundle(applicationPath: String)
+            case couldNotGetInfoDictionary
+            case couldNotGetMandatoryAppInformation(_ mandatoryInformation: MandatoryAppInformation)
+
+            public var errorDescription: String?
+            {
+                switch self
+                {
+                case .providedURLDoesNotExist(let checkedPath):
+                    return "The provided URL does not exist: \(checkedPath)"
+                case .applicationExecutableNotReadable(let checkedPath):
+                    return "Couldn't read application executable at \(checkedPath)"
+                case .couldNotReadBundle(let applicationPath):
+                    return "Couldn't read application bundle at \(applicationPath)"
+                case .couldNotGetInfoDictionary:
+                    return "Couldn't read application info.plist"
+                case .couldNotGetMandatoryAppInformation(let mandatoryInformation):
+                    return "Couldn't read mandatory app information: \(mandatoryInformation.description)"
                 }
             }
         }
-        case providedURLDoesNotExist(checkedPath: String)
-        case applicationExecutableNotReadable(checkedPath: String)
-        case couldNotReadBundle(applicationPath: String)
-        case couldNotGetInfoDictionary
-        case couldNotGetMandatoryAppInformation(_ mandatoryInformation: MandatoryAppInformation)
-        
-        public var errorDescription: String?
+
+        public init(from appURL: URL) throws(ApplicationInitializationError)
         {
-            switch self {
-            case .providedURLDoesNotExist(let checkedPath):
-                return "The provided URL does not exist: \(checkedPath)"
-            case .applicationExecutableNotReadable(let checkedPath):
-                return "Couldn't read application executable at \(checkedPath)"
-            case .couldNotReadBundle(let applicationPath):
-                return "Couldn't read application bundle at \(applicationPath)"
-            case .couldNotGetInfoDictionary:
-                return "Couldn't read application info.plist"
-            case .couldNotGetMandatoryAppInformation(let mandatoryInformation):
-                return "Couldn't read mandatory app information: \(mandatoryInformation.description)"
+            guard FileManager.default.fileExists(atPath: appURL.path)
+            else
+            {
+                throw ApplicationInitializationError.providedURLDoesNotExist(checkedPath: appURL.path)
             }
-        }
-    }
 
-    public init(from appURL: URL) throws(ApplicationInitializationError)
-    {
-        guard FileManager.default.fileExists(atPath: appURL.path) else
-        {
-            throw ApplicationInitializationError.providedURLDoesNotExist(checkedPath: appURL.path)
-        }
-        
-        guard FileManager.default.isReadableFile(atPath: appURL.path) == true else
-        {
-            throw ApplicationInitializationError.applicationExecutableNotReadable(checkedPath: appURL.path)
-        }
+            guard FileManager.default.isReadableFile(atPath: appURL.path) == true
+            else
+            {
+                throw ApplicationInitializationError.applicationExecutableNotReadable(checkedPath: appURL.path)
+            }
 
-        guard let appBundle: Bundle = .init(url: appURL)
-        else
-        {
-            throw ApplicationInitializationError.couldNotReadBundle(applicationPath: appURL.absoluteString)
-        }
+            guard let appBundle: Bundle = .init(url: appURL)
+            else
+            {
+                LibraryConstants.shared.logger.debug("Could not read app bundle for \(appURL.absoluteString)")
 
-        LibraryConstants.shared.logger.debug("Will try to initialize and App object form bundle \(appBundle)")
-        
-        guard let appBundleInfoDictionary: [String: Any] = appBundle.infoDictionary
-        else
-        {
-            throw ApplicationInitializationError.couldNotGetInfoDictionary
-        }
-        
-        guard
-            let appName: String = Application.getAppName(fromInfoDictionary: appBundleInfoDictionary),
-            let appBundleIdentifier: String = Application.getAppBundleID(fromInfoDictionary: appBundleInfoDictionary)
-        else
-        {
-            throw ApplicationInitializationError.couldNotGetMandatoryAppInformation(.name)
-        }
-        
-        self.name = appName
-        
-        self.url = appURL
+                throw ApplicationInitializationError.couldNotReadBundle(applicationPath: appURL.absoluteString)
+            }
 
-        self.iconPath = Application.getAppIconPath(fromInfoDictionary: appBundleInfoDictionary, appBundle: appBundle)
-        
-        if let iconPath = self.iconPath
-        {
-            self.iconImage = .init(
-                nsImage: .init(byReferencing: iconPath)
+            LibraryConstants.shared.logger.debug("Will try to initialize and App object form bundle \(appBundle)")
+
+            guard let appBundleInfoDictionary: [String: Any] = appBundle.infoDictionary
+            else
+            {
+                LibraryConstants.shared.logger.debug("Could not read app bundle dictionary for \(appURL.absoluteString)")
+
+                throw ApplicationInitializationError.couldNotGetInfoDictionary
+            }
+
+            guard
+                let appName: String = Application.getAppName(fromInfoDictionary: appBundleInfoDictionary),
+                let appBundleIdentifier: String = Application.getAppBundleID(fromInfoDictionary: appBundleInfoDictionary)
+            else
+            {
+                LibraryConstants.shared.logger.debug("Could not get mandatory app information for \(appURL.absoluteString)")
+
+                throw ApplicationInitializationError.couldNotGetMandatoryAppInformation(.name)
+            }
+
+            self.name = appName
+
+            self.url = appURL
+
+            self.iconPath = Application.getAppIconPath(fromInfoDictionary: appBundleInfoDictionary, appBundle: appBundle)
+
+            if let iconPath = self.iconPath
+            {
+                self.iconImage = .init(
+                    nsImage: .init(byReferencing: iconPath)
+                )
+            }
+            else
+            {
+                self.iconImage = nil
+            }
+
+            let details: Application.AdditionalDetails = .init(
+                bundleID: appBundleIdentifier,
+                isSystemApp: appBundleIdentifier.hasPrefix("com.apple")
             )
-        }
-        else
-        {
-            self.iconImage = nil
-        }
-        
-        let details: Application.AdditionalDetails = .init(
-            bundleID: appBundleIdentifier,
-            isSystemApp: appBundleIdentifier.hasPrefix("com.apple")
-        )
-        
-        self.additionalDetails = details
-    }
 
-    private static func getAppBundleID(fromInfoDictionary infoDictionary: [String: Any]) -> String?
-    {
-        return infoDictionary["CFBundleIdentifier"] as? String
-    }
-    
-    private static func getAppName(fromInfoDictionary infoDictionary: [String: Any]) -> String?
-    {
-        return infoDictionary["CFBundleName"] as? String
-    }
-    
-    private static func getAppIconPath(fromInfoDictionary infoDictionary: [String: Any], appBundle: Bundle) -> URL?
-    {
-        guard let iconFileName: String = infoDictionary["CFBundleIconFile"] as? String
-        else
-        {
-            return nil
+            self.additionalDetails = details
         }
 
-        return appBundle.resourceURL?.appendingPathComponent(iconFileName, conformingTo: .icns)
+        private static func getAppBundleID(fromInfoDictionary infoDictionary: [String: Any]) -> String?
+        {
+            return infoDictionary["CFBundleIdentifier"] as? String
+        }
+
+        private static func getAppName(fromInfoDictionary infoDictionary: [String: Any]) -> String?
+        {
+            return infoDictionary["CFBundleName"] as? String
+        }
+
+        private static func getAppIconPath(fromInfoDictionary infoDictionary: [String: Any], appBundle: Bundle) -> URL?
+        {
+            var finalIconURL: URL?
+            
+            if let iconFileName: String = infoDictionary["CFBundleIconFile"] as? String
+            { // Is the app a macOS executable?
+                finalIconURL = appBundle.resourceURL?.appendingPathComponent(iconFileName, conformingTo: .icns)
+               
+            }
+
+            if let iconsDict: [String: Any] = infoDictionary["CFBundleIcons~ipad"] as? [String: Any],
+               let primaryIcon: [String: Any] = iconsDict["CFBundlePrimaryIcon"] as? [String: Any],
+               let iconFiles: [String] = primaryIcon["CFBundleIconFiles"] as? [String],
+               let iconFileName: String = iconFiles.first
+            { // Is the app a transpiled iPad executable? The fuck is this path
+                guard let appBundleResourceURL = appBundle.resourceURL else
+                {
+                    return nil
+                }
+                
+                guard let actualIconURL = try? FileManager.default.contentsOfDirectory(atPath: appBundleResourceURL.path).filter({ $0.contains(iconFileName) }).first else {
+                    return nil
+                }
+                
+                finalIconURL = appBundle.resourceURL?.appendingPathComponent(actualIconURL, conformingTo: .png)
+            }
+            
+            return finalIconURL
+        }
     }
-}
 #endif
